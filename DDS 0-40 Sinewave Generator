@@ -1,0 +1,264 @@
+/* T Robb 22.7.2013 - Updated by Ricardo Cardozo 13.04.2014
+
+The way it works , is we read the buttons for up and down, we use that to increment or decrement a number which we later
+use to set an increment or decrement amount, ie 10Hz, 1Khz, 1Mhz etc.
+Then if the left or right buttons are pushed we go up or down in frequency by the increment amount
+
+*/
+
+
+#include <stdio.h>
+#include <dds.h>
+#include <LiquidCrystal.h>
+
+#define RESET 13
+#define data_pin 12
+#define load_pin A5
+#define clock_pin A4
+#define clock_hz 120000000LL
+#define calibrationValue -0.0400000 // This is a value we change to calibrate our particular chip more accurately
+#define buttonPin A0 
+
+//chip, data_pin, load_pin, clock_pin, clock_hz
+dds ddschip(DDS9850, data_pin, load_pin, clock_pin, clock_hz);  // Set my dds up with 120mhz onboard crystal
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+
+//Some variables to use in our program
+long toFrequency = 00000000;   // Initial frequency
+long currentFrequency;
+long maxFrequency = 40000000;  // Maximum frequency
+long minFrequency = 0;
+int incrementNumber = 6;
+int maxprogramnumber = 6;  // Don´t forget to increase the menu numbers here!!
+int programnumber = 1;           
+
+void setup()
+{
+  
+  Serial.begin(9600);
+  Serial.println("Beginning Setup");
+
+  //Set up the LCD's number of columns and rows: 
+  lcd.begin(16, 2);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Megratronic DDS");  //Print a little message
+  lcd.setCursor(0, 1);
+  lcd.print("Signal Generator");
+  delay(3500);
+  //Setup pins
+  pinMode(RESET, OUTPUT);
+  pinMode(data_pin, OUTPUT);
+  pinMode(load_pin, OUTPUT);
+  pinMode(clock_pin, OUTPUT);
+  pinMode(buttonPin, INPUT);
+  digitalWrite(buttonPin, HIGH); 
+
+  ddschip.calibrate(calibrationValue);  // This is a value we change to calibrate our particular chip more accurately
+  ddschip.setfrequency(toFrequency);
+  lcd.clear();
+}
+
+void loop()
+{
+
+  if(toFrequency >= maxFrequency){(toFrequency = maxFrequency);}
+  if(toFrequency <= minFrequency){(toFrequency = minFrequency);}
+  ddschip.setfrequency(toFrequency);
+  currentFrequency = toFrequency;
+  
+
+  switch(incrementNumber){
+    
+    case 0:
+    Serial.println("increment amount is 1hz");
+    lcd.setCursor(0, 0);
+    lcd.print("Increment    1Hz");  
+    break;
+    
+    case 1:
+    Serial.println("increment amount is 10hz");
+    lcd.setCursor(0, 0);
+    lcd.print("Increment   10Hz ");  
+    break;
+    
+    case 2:
+    Serial.println("increment amount is 100hz");
+    lcd.setCursor(0, 0);
+    lcd.print("Increment  100Hz ");  
+    break;
+    
+    case 3:
+    Serial.println("increment amount is 1 000hz");
+    lcd.setCursor(0, 0);
+    lcd.print("Increment   1Khz"); 
+    break;
+    
+    case 4:
+    Serial.println("increment amount is 10 000hz");
+    lcd.setCursor(0, 0);
+    lcd.print("Increment  10Khz");  
+    break;
+    
+    case 5:
+    Serial.println("increment amount is 100 000hz");
+    lcd.setCursor(0, 0);
+    lcd.print("Increment 100Khz");  
+    break;
+    
+    case 6:
+    Serial.println("increment amount is 1 000 000hz");
+    lcd.setCursor(0, 0);
+    lcd.print("Increment   1Mhz");  
+    break;
+    
+    default:  
+    Serial.println("increment amount is 100hz");
+    lcd.setCursor(0, 0);
+    lcd.print("Increment  100Hz ");  
+    break;
+  }
+
+  lcd.setCursor(0, 1);
+  lcd.print("Freq is ");    //Print to lcd
+  lcd.setCursor(8, 1);
+  lcd.print(currentFrequency);
+  
+  //Serial.println(incrementNumber);  // Temporary for debuggin delete me
+
+  Serial.print("Current Frequency is set to :");
+  Serial.println(currentFrequency);
+
+  while((analogRead(buttonPin))>=1000){}   // Do nothing while no buttons pressed to chill out
+  delay(5);
+
+  //Use This Values for DFRobbot LCD Keypad Shield 1.1 DFR0009 Only
+
+  if(analogRead(buttonPin)>=200 && analogRead(buttonPin)<=250){ // We have pushed UP BUTTON (OK)
+    upFrequency();
+    delay(300);
+  }
+
+  if(analogRead(buttonPin)>=400 && analogRead(buttonPin)<=450){ // We have pushed DOWN BUTTON (OK)
+    downFrequency();
+    delay(300);
+  }
+
+  if((analogRead(buttonPin))<=50){ // We have pushed RIGHT BUTTON (OK)
+    incrementNumber++;
+    delay(300);
+  }
+
+  if(analogRead(buttonPin)>=600 && analogRead(buttonPin)<=650){ // We have pushed LEFT BUTTON (OK)
+    incrementNumber--;
+    delay(300);
+  }
+
+  //Use This Values for DFRobbot LCD Keypad Shield 1.0 DFR0009 Only
+
+  //  if(analogRead(buttonPin)>=100 && analogRead(buttonPin)<=200){ // We Have Pushed UP BUTTON
+    //  upFrequency();
+    //  delay(300);
+    //}
+
+    //  if(analogRead(buttonPin)>=200 && analogRead(buttonPin)<=400){ // We Have Pushed DOWN BUTTON
+      //  downFrequency();
+      //  delay(300);
+      //}
+
+      //  if((analogRead(buttonPin))<=50){ // We have pushed RIGHT BUTTON
+        //  incrementNumber++;
+        //  delay(300);
+        //}
+
+        //  if(analogRead(buttonPin)>=400 && analogRead(buttonPin)<=600){ // We have pushed LEFT BUTTON
+          //  incrementNumber--;
+
+          if(incrementNumber > 6){incrementNumber = 0;}  // This is where the menu goes around and around
+          if(incrementNumber < 0){incrementNumber = 6;}
+
+          delay(100);
+          lcd.clear();
+        }
+
+        void upFrequency()
+        {
+
+          Serial.println("Going UP Frequency");
+          switch(incrementNumber){
+            
+            case 0: 
+            toFrequency = (toFrequency + 1);
+            break;
+            
+            case 1: 
+            toFrequency = (toFrequency + 10);
+            break;
+
+            case 2: 
+            toFrequency = (toFrequency + 100);
+            break;
+
+            case 3: 
+            toFrequency = (toFrequency + 1000);
+            break;
+
+            case 4: 
+            toFrequency = (toFrequency + 10000);
+            break;
+
+            case 5: 
+            toFrequency = (toFrequency + 100000);
+            break;
+
+            
+            case 6:
+            toFrequency = (toFrequency + 1000000);
+            break;
+            
+            default: 
+            toFrequency = (toFrequency + 10);
+            break;
+          }
+        }
+
+        void downFrequency()
+        {
+          
+          Serial.println("Going DOWN Frequency");
+          switch(incrementNumber){
+            
+            case 0: 
+            toFrequency = (toFrequency - 1);
+            break;
+            
+            case 1: 
+            toFrequency = (toFrequency - 10);
+            break;
+
+            case 2: 
+            toFrequency = (toFrequency - 100);
+            break;
+
+            case 3: 
+            toFrequency = (toFrequency - 1000);
+            break;
+
+            case 4: 
+            toFrequency = (toFrequency - 10000);
+            break;
+
+            case 5: 
+            toFrequency = (toFrequency - 100000);
+            break;
+
+            case 6:
+            toFrequency = (toFrequency - 1000000);
+            break;
+            
+            default: 
+            toFrequency = (toFrequency - 10);
+            break;
+          }
+        }
+
